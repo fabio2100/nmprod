@@ -5,6 +5,12 @@ if (!process.env.MONGODB_URI) {
 }
 
 const uri = process.env.MONGODB_URI;
+const options = {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    maxPoolSize: 10,
+}
+
 let client: MongoClient;
 let clientPromise: Promise<MongoClient>;
 

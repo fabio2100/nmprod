@@ -55,7 +55,8 @@ export async function POST(request: Request) {
             nombreCompleto,
             celular,
             dni,
-            password
+            password,
+            googleValidado: false
         });
 
         return NextResponse.json(user, { status: 201 });

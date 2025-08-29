@@ -6,7 +6,7 @@ import User from '@/models/User';
 
 export const authOptions: AuthOptions = {
     adapter: MongoDBAdapter(clientPromise),
-    debug: true, // Habilitar logging
+    debug: true,
     providers: [
         GoogleProvider({
             clientId: process.env.GOOGLE_ID!,
@@ -18,54 +18,58 @@ export const authOptions: AuthOptions = {
                     response_type: "code"
                 }
             },
-            profile(profile) {
-                console.log('Google profile:', profile); // Log del perfil
-                return {
-                    id: profile.sub,
-                    email: profile.email,
-                    nombreCompleto: profile.name,
-                    image: profile.picture,
-                }
-            }
         }),
     ],
     callbacks: {
-        async signIn({ user, account, profile }) {
-            console.log('SignIn callback started');
-            console.log('User:', user);
-            console.log('Account:', account);
-            console.log('Profile:', profile);
-
-            if (account?.provider === "google") {
-                try {
-                    // Verificar si el usuario ya existe
+        async signIn({ user, account, profile }: any) {
+            try {
+                if (account?.provider === "google") {
+                    console.log('Google sign in attempt:', { user, profile });
+                    
+                    // Buscar usuario existente
                     const existingUser = await User.findOne({ email: user.email });
-                    console.log('Existing user:', existingUser);
-
+                    
                     if (!existingUser) {
                         console.log('Creating new user...');
-                        // Crear un nuevo usuario con los datos de Google
-                        const newUser = await User.create({
+                        // Crear nuevo usuario con googleValidado en true
+                        const userData = {
                             email: user.email,
-                            nombreCompleto: user.name,
-                            // Campos opcionales que podrías querer manejar de otra manera
-                            celular: '',
-                            dni: '',
-                            password: '' // Podrías generar una contraseña aleatoria si es necesario
-                        });
+                            nombreCompleto: profile.name,
+                            googleValidado: true,
+                            // Establecer campos opcionales como undefined
+                            celular: undefined,
+                            dni: undefined,
+                            password: undefined
+                        };
+                        
+                        const newUser = await User.create(userData);
                         console.log('New user created:', newUser);
+                    } else {
+                        console.log('Existing user found:', user.email);
                     }
                     return true;
-                } catch (error) {
-                    console.error('Error during sign in:', error);
-                    return false;
                 }
+                return true;
+            } catch (error) {
+                console.error('Error in signIn callback:', error);
+                return false;
             }
-            console.log('SignIn callback completed');
-            return true;
         },
-        async session({ session, user }) {
-            // Añadir datos adicionales a la sesión si es necesario
+        async jwt({ token, user, account }: any) {
+            if (account && user) {
+                return {
+                    ...token,
+                    accessToken: account.access_token,
+                    userId: user.id,
+                };
+            }
+            return token;
+        },
+        async session({ session, token }: any) {
+            if (session?.user) {
+                session.user.id = token.userId;
+                session.accessToken = token.accessToken;
+            }
             return session;
         },
     },

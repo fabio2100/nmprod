@@ -16,20 +16,40 @@ const userSchema = new mongoose.Schema({
     },
     celular: {
         type: String,
-        required: [true, 'El celular es requerido'],
+        validate: {
+            validator: function(this: any, v: string) {
+                return this.googleValidado || (v && v.length > 0);
+            },
+            message: 'El celular es requerido para registro manual'
+        },
         unique: true,
+        sparse: true,
         trim: true
     },
     dni: {
         type: String,
-        required: [true, 'El DNI es requerido'],
+        validate: {
+            validator: function(this: any, v: string) {
+                return this.googleValidado || (v && v.length > 0);
+            },
+            message: 'El DNI es requerido para registro manual'
+        },
         unique: true,
+        sparse: true,
         trim: true
     },
     password: {
         type: String,
-        required: [true, 'La contraseña es requerida'],
-        minlength: [6, 'La contraseña debe tener al menos 6 caracteres']
+        validate: {
+            validator: function(this: any, v: string) {
+                return this.googleValidado || (v && v.length >= 6);
+            },
+            message: 'La contraseña es requerida y debe tener al menos 6 caracteres para registro manual'
+        }
+    },
+    googleValidado: {
+        type: Boolean,
+        default: false
     }
 }, {
     timestamps: true
@@ -37,7 +57,7 @@ const userSchema = new mongoose.Schema({
 
 // Middleware para encriptar la contraseña antes de guardar
 userSchema.pre('save', async function(next) {
-    if (this.isModified('password')) {
+    if (this.isModified('password') && this.password) {
         const salt = await bcryptjs.genSalt(10);
         this.password = await bcryptjs.hash(this.password, salt);
     }
